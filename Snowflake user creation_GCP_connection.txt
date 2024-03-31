@@ -1,0 +1,109 @@
+-- Use an admin role
+USE ROLE ACCOUNTADMIN;
+
+-- Create the `test` role
+CREATE ROLE IF NOT EXISTS test;
+GRANT ROLE test TO ROLE ACCOUNTADMIN;
+
+-- Create the default warehouse if necessary
+CREATE WAREHOUSE IF NOT EXISTS COMPUTE_WH;
+GRANT OPERATE ON WAREHOUSE COMPUTE_WH TO ROLE test;
+
+-- Create the `dbt` user and assign to role
+CREATE USER IF NOT EXISTS dbt
+  PASSWORD='dbtPassword123'
+  LOGIN_NAME='dbt'
+  MUST_CHANGE_PASSWORD=FALSE
+  DEFAULT_WAREHOUSE='COMPUTE_WH'
+  DEFAULT_ROLE='test'
+  DEFAULT_NAMESPACE='chikago_taxi_trips'
+  COMMENT='DBT user used for test';
+GRANT ROLE test to USER dbt;
+
+-- Create our database and schemas
+CREATE DATABASE IF NOT EXISTS chikago_taxi_trips;
+CREATE SCHEMA IF NOT EXISTS chikago_taxi_trips.RAW;
+
+-- Set up permissions to role `test`
+GRANT ALL ON WAREHOUSE COMPUTE_WH TO ROLE test; 
+GRANT ALL ON DATABASE chikago_taxi_trips to ROLE test;
+GRANT ALL ON ALL SCHEMAS IN DATABASE chikago_taxi_trips to ROLE test;
+GRANT ALL ON FUTURE SCHEMAS IN DATABASE chikago_taxi_trips to ROLE test;
+GRANT ALL ON ALL TABLES IN SCHEMA chikago_taxi_trips.RAW to ROLE test;
+GRANT ALL ON FUTURE TABLES IN SCHEMA chikago_taxi_trips.RAW to ROLE test;
+
+-- Create integration with GCS bucket
+CREATE OR REPLACE STORAGE INTEGRATION gcs_int
+  TYPE = EXTERNAL_STAGE
+  STORAGE_PROVIDER = 'GCS'
+  ENABLED = TRUE 
+  STORAGE_ALLOWED_LOCATIONS = ('gcs://chicago_taxi_trips_dataset_101')
+
+-- Set up permissions to use integreation to role `test`
+GRANT USAGE ON INTEGRATION gcs_int  to ROLE test;
+
+
+-- Chek up description to configure GCS principal role and permissions
+desc STORAGE INTEGRATION gcs_int;
+
+
+-- Set up the defaults
+USE WAREHOUSE COMPUTE_WH;
+USE DATABASE chikago_taxi_trips;
+USE SCHEMA chikago_taxi_trips.RAW;
+
+-- Create our table and import the data from GCP
+CREATE OR REPLACE TABLE raw_chikago_taxi_trips
+                    (unique_key string,
+                     taxi_id string,
+                     trip_start_timestamp timestamp,
+                     trip_end_timestamp timestamp,
+                     trip_seconds integer,
+                     trip_miles float,
+                     pickup_census_tract integer,
+                     dropoff_census_tract integer,
+                     pickup_community_area integer,
+                     dropoff_community_area integer,
+                     fare float,
+                     tips float, 
+                     tolls float,
+                     extras float, 
+                     trip_total float,
+                     payment_type string,
+                     company string,
+                     pickup_latitude float,
+                     pickup_longitude float,
+                     pickup_location string,
+                     dropoff_latitude float,
+                     dropoff_longitude float,
+                     dropoff_location string);
+                    
+-- Upload data into table from GCP bucket with multiple csv
+COPY INTO raw_chikago_taxi_trips (unique_key,
+                        taxi_id,
+                        trip_start_timestamp,
+                        trip_end_timestamp,
+                        trip_seconds,
+                        trip_miles,
+                        pickup_census_tract,
+                        dropoff_census_tract,
+                        pickup_community_area,
+                        dropoff_community_area,
+                        fare,
+                        tips,
+                        tolls, 
+                        extras, 
+                        trip_total,
+                        payment_type,
+                        company,
+                        pickup_latitude,
+                        pickup_longitude, 
+                        pickup_location,
+                        dropoff_latitude,
+                        dropoff_longitude,
+                        dropoff_location)
+  FROM 'gcs://chicago_taxi_trips_dataset_101'
+  STORAGE_INTEGRATION = gcs_int
+   FILE_FORMAT = (type = 'CSV' skip_header = 1
+                    FIELD_OPTIONALLY_ENCLOSED_BY = '"',
+                    TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS UTC');
