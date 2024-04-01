@@ -1,4 +1,4 @@
-# Bigquery_snowflake_integration_dbt_sheets
+# Bigquery_snowflake_integration_dbt_Chicago_taxi_trips_test
 
 
 Задача по тестовому:
