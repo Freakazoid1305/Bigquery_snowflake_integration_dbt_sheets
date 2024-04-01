@@ -1,0 +1,11 @@
+sources:
+  - name: chikago_taxi_trips
+    schema: raw
+    tables:
+      - name: chikago_taxi_trips
+        identifier: raw_chikago_taxi_trips
+        loaded_at_field: TRIP_START_TIMESTAMP
+        freshness:
+          warn_after: {count: 90, period: day}
+          error_after: {count: 365, period: day}
+        
