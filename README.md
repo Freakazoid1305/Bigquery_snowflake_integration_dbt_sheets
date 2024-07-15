@@ -1,7 +1,7 @@
-# Bigquery_snowflake_integration_dbt_Chicago_taxi_trips_test
+# Bigquery_snowflake_integration_dbt_Chicago_taxi_trips
 
 
-Задача по тестовому:
+Задача на использование dbt, разработана Chatgpt:
 
 
 Найдите три машины, получившие наибольшее количество чаевых в апреле 2018 года, и выведите, как изменялась эта сумма в процентах в последующие месяцы по сравнению с предыдущим в таблице со столбцами taxi_id, year_month, tips_sum, tips_change. В качестве даты поездки возьмите дату начала поездки.
